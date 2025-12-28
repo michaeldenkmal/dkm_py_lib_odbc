@@ -2,10 +2,9 @@ import datetime
 from dataclasses import dataclass
 from typing import List
 
-import pyodbc
-
+from dkm_lib_db.db_driver import DbConn
+from dkm_lib_db.db_util import exec_query, get_dict_rows
 from dkm_lib_mssql_odbc import norm_util
-from dkm_lib_odbc import conn_util, odbc_util
 
 
 @dataclass
@@ -24,20 +23,20 @@ class MssqlSessionInfo2:
     REQUESTID:int=0
 
 
-def get_server_session_info2(conn:pyodbc.Connection)->List[MssqlSessionInfo2]:
+def get_server_session_info2(conn:DbConn)->List[MssqlSessionInfo2]:
     sql="exec sp_who2"
     return norm_util.fill_recs_data(conn,sql,lambda: MssqlSessionInfo2())
 
 
-def kill_session(conn:pyodbc.Connection, pid:str):
+def kill_session(conn:DbConn, pid:str):
     sql=f"KILL {pid}"
-    conn_util.conn_set_autocommit(conn, True)
+    conn.set_autocommit(True)
     print(f"kill_session: pid={pid}: {sql}")
-    odbc_util.exec_query(conn, sql)
-    conn_util.conn_set_autocommit(conn, False)
+    exec_query(conn, sql)
+    conn.set_autocommit(False)
 
 
-def kill_all_sessions_by_dbname(conn:pyodbc.Connection, dbname:str):
+def kill_all_sessions_by_dbname(conn:DbConn, dbname:str):
     sessions = get_server_session_info2(conn)
     my_spid = str(get_own_session_id(conn))
     print(f"my spid:{my_spid}, session.len={len(sessions)}")
@@ -57,8 +56,8 @@ def kill_all_sessions_by_dbname(conn:pyodbc.Connection, dbname:str):
             print(f"{err} bei spid={pid}")
 
 
-def get_own_session_id(conn:pyodbc.Connection)->str:
+def get_own_session_id(conn:DbConn)->str:
     sql="SELECT @@SPID as spid"
-    rows=odbc_util.get_dict_rows(conn,sql)
+    rows=get_dict_rows(conn,sql)
     return rows[0]["spid"]
 

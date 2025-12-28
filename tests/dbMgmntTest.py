@@ -1,13 +1,13 @@
 import unittest
 
 from dkm_lib_mssql_odbc.mssql_dbmgmnt_util import get_all_database_infos
-from dkm_lib_odbc import odbc_util
+from dkm_lib_mssql_odbc.mssql_odbc_use import using_db_conn_test
 
 
 class DbMgmntTest(unittest.TestCase):
 
     def test_get_all_database_infos(self):
-        with odbc_util.using_odbc_conn_test() as conn:
+        with using_db_conn_test() as conn:
             db_infos =  get_all_database_infos(conn)
         db_check_dict =dict()
         some_dups_found=False

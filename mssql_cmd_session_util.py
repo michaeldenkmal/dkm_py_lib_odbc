@@ -1,9 +1,10 @@
 # offh.ini 0: office Help Ini
 import os.path
 
-from dkm_lib_mssql_odbc import mssql_snapshot_util, mssql_sess_info
-from dkm_lib_odbc import odbc_util
-from dkm_lib_odbc.oh_ini_db_file import TOhIniDBFile, get_test_offh_ini_file_path
+from dkm_lib_db import db_util
+from dkm_lib_db.oh_ini_db_file import TOhIniDBFile, get_test_offh_ini_file_path
+from dkm_lib_mssql_odbc import mssql_snapshot_util, mssql_sess_info, mssql_odbc_use
+from dkm_lib_mssql_odbc.mssql_odbc_use import using_db_conn_test, using_db_conn
 
 ARG_POS_OFFH_INI=1
 # Parameter 1: action=KILL_ALL_SESSIONS
@@ -51,13 +52,13 @@ def analyze_cmd_args(args:List[str])->Optional[CmdParams]:
 
 def exec_action_create(cmd_params):
     dbinfo_file = TOhIniDBFile(get_test_offh_ini_file_path())
-    with odbc_util.using_odbc_conn_test() as conn:
+    with using_db_conn_test() as conn:
         mssql_snapshot_util.create_snapshot(conn, dbinfo_file.database, cmd_params.snapshot_name)
 
 
 def exec_action_revert(cmd_params):
     dbinfo_file = TOhIniDBFile(get_test_offh_ini_file_path())
-    with odbc_util.using_odbc_conn_test() as conn:
+    with mssql_odbc_use.using_db_conn_test() as conn:
         mssql_snapshot_util.revert_to_snapshot(conn, dbinfo_file.database, cmd_params.snapshot_name)
 
 
@@ -79,17 +80,17 @@ def args_info()->str:
 def exec_action_kill_all_sessions(cmd_params:CmdParams):
     if not os.path.exists(cmd_params.offh_ini_path):
         raise Exception(f"offhinipath @@{cmd_params.offh_ini_path}@@ existiert nicht")
-    with odbc_util.using_odbc_conn(cmd_params.offh_ini_path) as conn:
+    with using_db_conn(cmd_params.offh_ini_path) as conn:
         mssql_sess_info.kill_all_sessions_by_dbname(conn, cmd_params.dbname)
 
 
 def exec_action_drop_database(cmd_params):
     if not os.path.exists(cmd_params.offh_ini_path):
         raise Exception(f"offhinipath @@{cmd_params.offh_ini_path}@@ existiert nicht")
-    with odbc_util.using_odbc_conn(cmd_params.offh_ini_path) as conn:
+    with using_db_conn(cmd_params.offh_ini_path) as conn:
         mssql_sess_info.kill_all_sessions_by_dbname(conn, cmd_params.dbname)
-        odbc_util.exec_query(conn,"use master")
-        odbc_util.exec_query(conn,f"drop database {cmd_params.dbname}")
+        db_util.exec_query(conn,"use master")
+        db_util.exec_query(conn,f"drop database {cmd_params.dbname}")
 
 
 if __name__ == "__main__":

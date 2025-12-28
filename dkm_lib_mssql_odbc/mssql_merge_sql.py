@@ -41,24 +41,23 @@ def _build_merge_stmt(table:str, using_source_select_cols:List[str], primary_key
     sb.append(_buildInsert(insert_columns))
     if auto_inc_col:
         sb.append(_buildOutput(auto_inc_col))
-        sb.append("select * from @ChangeResult")
-    else:
-        sb.append(";")
+    sb.append(";")
     # return TListUtil.joinListOfStr(sb,"\n");
     return "\n".join(sb)
 
 
 # static String buildHead(final String tableName, final String changeResultIdDataType) {
 def _build_head(table_name:str, change_result_id_datatype:str):
-    if (change_result_id_datatype is None) or (change_result_id_datatype == ""):
+    #if (change_result_id_datatype is None) or (change_result_id_datatype == ""):
         # return String.format(
         # "MERGE %s AS target\n", tableName);
-        return "MERGE %s AS target\n" % table_name
-    else:
-        return """
-        DECLARE @ChangeResult TABLE (ChangeType VARCHAR(10), Id %s)
-        MERGE %s AS target
-        """ % (change_result_id_datatype, table_name)
+    return "SET NOCOUNT ON;\nMERGE %s AS target\n" % table_name
+    #else:
+    #    return """
+    #    SET NOCOUNT ON;
+    #    DECLARE @ChangeResult TABLE (ChangeType VARCHAR(10), Id %s)
+    #    MERGE %s AS target
+    #    """ % (change_result_id_datatype, table_name)
 
 
 # static String buildUsing(String[] usingSourceSelectCols, boolean delphiParamMarker) {
@@ -152,5 +151,7 @@ def _buildInsert(insertColumns):
 
 # noinspection PyPep8Naming
 def _buildOutput( autoIncCol):
-        return "OUTPUT $action, inserted.%s as newId into @ChangeResult;" % autoIncCol
+        #return "OUTPUT $action, inserted.%s as newId into @ChangeResult;" % autoIncCol
+        return "OUTPUT $action AS ChangeType, inserted.local_id AS %s " % autoIncCol
+        #return "OUTPUT $action, inserted.%s as newId into @ChangeResult;" % autoIncCol
 

@@ -1,19 +1,18 @@
 # -*- coding: utf-8 -*-
 # alter Version aus dkmlib kopiert
+import datetime
+import decimal
 from typing import Any, Set, Optional, List, Protocol
 
 import pyodbc  # type ignore
 # import mssqlMergeSql
 from dkm_lib_pure import dkm_reflect_util
 
-import datetime
-import decimal
-
+from dkm_lib_db.db_conf import TDbConf
+from dkm_lib_db.db_driver import DbConn
+from dkm_lib_db.db_util import iter_query, get_dict_rows, get_long_val_from_row, exec_query
 from dkm_lib_mssql_odbc import mssql_merge_sql
-from dkm_lib_mssql_odbc.dbshared_conf import IDbConf
 from dkm_lib_mssql_odbc.mssql_merge_sql import BuildMergeStmtParams
-from dkm_lib_odbc import odbc_util
-from dkm_lib_odbc.odbc_util import TDbConf, get_dict_rows, get_long_val_from_row, iter_query
 from dkm_lib_orm import orm_util
 
 MAP_MERGE_SQL_STMTS = dict()
@@ -75,7 +74,7 @@ def get_orm_first_row(conn, sql, clazz, *params) -> Optional[Any]:
         rows.append(orm_util.fill_orm_obj(clazz, row_map))
         return False
 
-    odbc_util.iter_query(conn, sql, on_row, params)
+    iter_query(conn, sql, on_row, params)
     if len(rows) > 0:
         return rows[0]
     return None
@@ -153,13 +152,13 @@ def get_next_id_sq(conn, table_name):
         ret.append(row["nextId"])
         return False
 
-    odbc_util.iter_query(conn, sql, on_row)
+    iter_query(conn, sql, on_row)
     return ret[0]
 
 
-def get_next_id_sq_with_bin(conf: IDbConf, table_name:str):
+def get_next_id_sq_with_bin(conf: TDbConf, table_name:str):
     new_id = get_next_id_sq(conf.conn, table_name)
-    return (new_id * conf.bin_fakt) + conf.bin
+    return (new_id * conf.binfakt) + conf.i_bin
 
 
 def save_with_get_next_id_and_bin_fakt_login_name_and_lu(conf, row, schema):
@@ -188,7 +187,7 @@ def save(conf, row, schema):
     params = row_to_params(row)
     try:
         # * damit das Tuple aufgelöst wird
-        odbc_util.exec_query(conf.conn, merge_sql, *params)
+        exec_query(conf.conn, merge_sql, *params)
     except pyodbc.ProgrammingError as ex:
         szpars = []
         idx = 0
@@ -216,7 +215,7 @@ def gen_delete_sql(row, schema):
 
 def delete(conf, row, schema):
     sql, params = gen_delete_sql(row, schema)
-    odbc_util.exec_query(conf.conn, sql, tuple(params))
+    exec_query(conf.conn, sql, tuple(params))
 
 
 """
@@ -296,7 +295,7 @@ class ProtRecIdLuLoginName(Protocol):
 
 
 
-def set_fields_in_sq_id_lu_login_name_rec(conf:IDbConf, table_name:str, rec:ProtRecIdLuLoginName):
+def set_fields_in_sq_id_lu_login_name_rec(conf:TDbConf, table_name:str, rec:ProtRecIdLuLoginName):
     if (rec.id == 0) or (rec.id is None):
         rec.id = get_next_id_sq_with_bin(conf, table_name)
     rec.lu = get_lu()
@@ -509,7 +508,7 @@ class TOrmDAO(object):
             row.lu = get_lu()
             row.login_name = conf.loginName
         params = get_sorted_row_values(row)
-        odbc_util.exec_query(conf.conn, self.get_merge_sql(), *params)
+        exec_query(conf.conn, self.get_merge_sql(), *params)
         return row
 
     def get_merge_sql(self):
@@ -526,6 +525,6 @@ class TOrmDAO(object):
         )
         return self._merge_sql
 
-    def delete_by_id(self, conn:pyodbc.Connection, i_id):
+    def delete_by_id(self, conn:DbConn, i_id):
         sql = "DELETE FROM %s WHERE ID=%%s" % (self.table_def.table_name)
-        odbc_util.exec_query(conn, sql, i_id)
+        exec_query(conn, sql, i_id)

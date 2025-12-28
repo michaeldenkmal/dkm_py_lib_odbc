@@ -2,8 +2,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import List, TypeVar, Optional
 
+from dkm_lib_db.db_conf import TDbConf
 from dkm_lib_mssql_odbc import mssql_crud_util
-from dkm_lib_mssql_odbc.dbshared_conf import IDbConf
 from dkm_lib_mssql_odbc.mssql_merge_sql import BuildMergeStmtParams
 
 
@@ -43,13 +43,13 @@ def build_ocb_merge_stmt_params(dataclazz,table:str,
     )
 
 
-def set_ocb_def_fields( conf:IDbConf, row:TOCB)->TOCB:
+def set_ocb_def_fields( conf:TDbConf, row:TOCB)->TOCB:
     lu = datetime.now()
     if row.created_on is None:
         row.created_on = lu
     row.lu = lu
     row.login_name = conf.login_name
-    row.local_bin = conf.bin
-    row.local_binfakt = conf.bin_fakt
+    row.local_bin = conf.i_bin
+    row.local_binfakt = conf.binfakt
     return row
 

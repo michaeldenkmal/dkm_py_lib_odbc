@@ -1,3 +1,18 @@
+# installation
+
+```powershell
+Get-OdbcDriver | Where-Object Name -like "*SQL*"
+
+```
+
+da sollte der Sql Server 18 dabei sein.
+
+wenn nicht dann
+
+```powershell
+.\install\msodbcsql.msi
+
+```
 # bespiel für DAO
 
 ```python

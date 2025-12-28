@@ -2,9 +2,9 @@ import dataclasses
 from abc import ABC, abstractmethod
 from typing import List, Any, TypeVar, Generic, Optional
 
+from dkm_lib_db import db_util
+from dkm_lib_db.db_conf import TDbConf
 from dkm_lib_mssql_odbc import mssql_merge_sql, mssql_crud_util
-from dkm_lib_odbc import odbc_util
-from dkm_lib_odbc.odbc_util import TDbConf
 from dkm_lib_mssql_odbc.mssql_merge_sql import BuildMergeStmtParams
 from dkm_lib_mssql_odbc.mssql_types import TDC, PrimaryKeyInfo
 from dkm_lib_mssql_odbc.norm_util import fill_recs_data
@@ -38,7 +38,7 @@ class BaseTdcDao(ABC, Generic[T]):
 
     def save(self, conf:TDbConf, row:T)->T:
         db_params = self.get_merge_params(row)
-        odbc_util.exec_query(conf.conn, self.merge_sql, *db_params)
+        db_util.exec_query(conf.conn, self.merge_sql, *db_params)
         return row
 
     def select_sel_columns(self)->List[str]:
@@ -76,6 +76,6 @@ class BaseTdcDao(ABC, Generic[T]):
 
     def delete(self,conf:TDbConf, row:T):
         dbparams = self.get_pk_values(row)
-        odbc_util.exec_query(conf.conn, self.delete_sql, *dbparams)
+        db_util.exec_query(conf.conn, self.delete_sql, *dbparams)
 
 

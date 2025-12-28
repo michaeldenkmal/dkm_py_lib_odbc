@@ -1,16 +1,16 @@
 # -*- coding: utf-8 -*-
 __author__ = 'michael'
 
-import unittest
 import os
+import unittest
 
 from dkm_lib_pure import dkmFsUtil
 
-from dkm_lib_mssql_odbc import mssql_dbmgmnt_util
+from dkm_lib_db import db_util
+from dkm_lib_db.db_util import get_dict_rows
+from dkm_lib_mssql_odbc import mssql_dbmgmnt_util, mssql_odbc_use
 from dkm_lib_mssql_odbc.mssql_dbmgmnt_util import backup_database_to_disk, drop_database_if_exists, read_backup_info, \
     restore_database_from_disk_by_backup_file_info, db_exists, TBackupFileInfo
-from dkm_lib_odbc import odbc_util
-from dkm_lib_odbc.odbc_util import get_dict_rows
 
 
 # noinspection PyPep8Naming
@@ -36,8 +36,8 @@ class MsqlUtilTest(unittest.TestCase):
             return True
 
         #mssqlUtil.execInConnection(dbConf, connExec)
-        with odbc_util.using_odbc_conn_test() as conn:
-            odbc_util.iter_query(conn,sql,onRow)
+        with mssql_odbc_use.using_db_conn_test() as conn:
+            db_util.iter_query(conn,sql,onRow)
 
     def test_kk_var_with_params(self):
         FN_V = "V"
@@ -51,8 +51,8 @@ class MsqlUtilTest(unittest.TestCase):
             return True
 
         #mssqlUtil.execInConnection(dbConf, connExec)
-        with odbc_util.using_odbc_conn_test() as conn:
-            odbc_util.iter_query(conn, sql, onRow, 'KURZNAME')
+        with mssql_odbc_use.using_db_conn_test() as conn:
+            db_util.iter_query(conn, sql, onRow, 'KURZNAME')
 
 
     def test_dbExists(self):
@@ -60,11 +60,11 @@ class MsqlUtilTest(unittest.TestCase):
         #    self.assertTrue(mssqlUtil.dbExists(conn, "OHTST"))
         #dbConf = ohIniDBFile.createTestDbConf(mssqlUtil.createConnInfoFromIniFile)
         #mssqlUtil.execInConnection(dbConf, connExec)
-        with odbc_util.using_odbc_conn_test() as conn:
+        with mssql_odbc_use.using_db_conn_test() as conn:
             self.assertTrue(mssql_dbmgmnt_util.db_exists(conn, "OHTST"))
 
     def test_createAndDropDataBase(self):
-        with odbc_util.using_odbc_conn_test() as conn:
+        with mssql_odbc_use.using_db_conn_test() as conn:
             if mssql_dbmgmnt_util.db_exists(conn, "xxx"):
                 mssql_dbmgmnt_util.drop_database(conn, "xxx")
             mssql_dbmgmnt_util.create_database(conn, "xxx")
@@ -77,7 +77,7 @@ class MsqlUtilTest(unittest.TestCase):
         dmpFileName = os.path.join(os.environ['TEMP'], "xxx.dmp")
         dkmFsUtil.killFileIfExists(dmpFileName)
 
-        with odbc_util.using_odbc_conn_test() as conn:
+        with mssql_odbc_use.using_db_conn_test() as conn:
             mssql_dbmgmnt_util.create_database_if_not_exists(conn, "xxx")
             mssql_dbmgmnt_util.backup_database_to_disk(conn, "xxx", dmpFileName)
             self.assertTrue(os.path.exists(dmpFileName))
@@ -87,7 +87,7 @@ class MsqlUtilTest(unittest.TestCase):
 
 
     def test_restoreDataBaseFromDisk(self):
-        with odbc_util.using_odbc_conn_test() as conn:
+        with mssql_odbc_use.using_db_conn_test() as conn:
             dstDbName = "ohjunit"
             dmpFileName = self.checkExportOhTstDataBase(conn)
             drop_database_if_exists(conn, dstDbName)
@@ -102,7 +102,7 @@ class MsqlUtilTest(unittest.TestCase):
             self.assertEqual(backupFileInfo.logical_file_name.lower(), logicalName.lower())
             self.assertTrue(backupFileInfo.physical_file_path.lower().endswith(endOfFileName))
 
-        with odbc_util.using_odbc_conn_test() as conn:
+        with mssql_odbc_use.using_db_conn_test() as conn:
             dmpFileName = self.checkExportOhTstDataBase(conn)
             self.assertTrue(os.path.exists(dmpFileName))
             backupInfo = read_backup_info(conn, dmpFileName)
@@ -114,7 +114,7 @@ class MsqlUtilTest(unittest.TestCase):
             assertCheck(backupInfo.ftInfo, "ftrow_ftOfficeh", ".ndf")
 
     def test_using_dkm_conn(self):
-        with odbc_util.using_odbc_conn_test() as conn:
+        with mssql_odbc_use.using_db_conn_test() as conn:
             sql="select v,w from KK_VARIABLE where v like %s order by 1"
             rows = get_dict_rows(conn,sql, "A%")
             for row in rows:

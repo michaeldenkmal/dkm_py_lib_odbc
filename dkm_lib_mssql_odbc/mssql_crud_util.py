@@ -1,13 +1,13 @@
 import dataclasses
 from typing import List, Any, Dict
-from pyodbc import Connection
-from dkm_lib_mssql_odbc.dbshared_conf import IDbConf
+
+from dkm_lib_db import db_util
+from dkm_lib_db.db_conf import TDbConf
+from dkm_lib_db.db_driver import DbConn
 from dkm_lib_mssql_odbc.mssql_merge_sql import BuildMergeStmtParams, build_merge_stmt
 from dkm_lib_mssql_odbc.mssql_types import SqlAndParams, TDC, PrimaryKeyInfo
-
-#https://docs.python.org/3/library/dataclasses.html
+# https://docs.python.org/3/library/dataclasses.html
 from dkm_lib_mssql_odbc.oh_calced_bin_pk_base_intf import TOCB
-from dkm_lib_odbc import odbc_util
 
 
 def build_dbparams(row:TDC)->List[Any]:
@@ -43,12 +43,12 @@ def build_sql_and_params_data_row_ocb(row:TOCB, merge_params:BuildMergeStmtParam
     )
 
 
-def merge_data_row(conn:Connection, row:TDC, merge_params:BuildMergeStmtParams):
+def merge_data_row(conn:DbConn, row:TDC, merge_params:BuildMergeStmtParams):
     sql_and_params = build_sql_and_params_data_row(row, merge_params)
-    odbc_util.exec_query(conn, sql_and_params.sql, *sql_and_params.dbparams)
+    db_util.exec_query(conn, sql_and_params.sql, *sql_and_params.dbparams)
 
 
-def merge_data_row_ocb(conf:IDbConf, row:TOCB, merge_params:BuildMergeStmtParams)->TOCB:
+def merge_data_row_ocb(conf:TDbConf, row:TOCB, merge_params:BuildMergeStmtParams)->TOCB:
     sql_and_params = build_sql_and_params_data_row_ocb(row, merge_params)
     #print(f"\n\n@@{sql_and_params.sql}@@\n\n")
     #mssqlUtil.execQuery(conn, sql_and_params.sql, *sql_and_params.dbparams)
@@ -58,10 +58,10 @@ def merge_data_row_ocb(conf:IDbConf, row:TOCB, merge_params:BuildMergeStmtParams
         new_id.append(r["Id"])
         return False
 
-    odbc_util.iter_query(conf.conn, sql_and_params.sql, fn_on_row_found, *sql_and_params.dbparams)
+    db_util.iter_query(conf.conn, sql_and_params.sql, fn_on_row_found, *sql_and_params.dbparams)
 
     if len(new_id)>0:
-        row.id = (new_id[0] * conf.bin_fakt) + conf.bin
+        row.id = (new_id[0] * conf.binfakt) + conf.i_bin
         row.local_id = new_id[0]
     else:
         raise Exception(f"es wurden keine Zeile zurückgegeben:row={row}, mergeparams={merge_params}")
@@ -99,7 +99,7 @@ def build_del_data_row_sql(table_name:str,primary_key_info:PrimaryKeyInfo)->SqlA
 def del_data_row(conn, row:TDC, table_name:str, primary_keys:Dict[str, Any]):
     sql_and_params = build_del_data_row_sql(table_name, primary_keys)
     try:
-        odbc_util.exec_query(conn,sql_and_params.sql,*sql_and_params.dbparams)
+        db_util.exec_query(conn,sql_and_params.sql,*sql_and_params.dbparams)
     except Exception as e:
         raise Exception(f"{e} bei del_data_row:row={row}, sql_and_params={sql_and_params}")
 

@@ -1,17 +1,17 @@
 import os
 
-import pyodbc
-from pyodbc import Connection
+from dkm_lib_db import db_util
+from dkm_lib_db.db_driver import DbConn
+from dkm_lib_db.db_util import exec_query, iter_query
 from dkm_lib_mssql_odbc import mssql_sess_info
-from dkm_lib_odbc.conn_util import conn_set_autocommit
-from dkm_lib_odbc.odbc_util import iter_query, exec_query
+from dkm_lib_mssql_odbc.mssql_odbc_use import using_db_conn
 
 
-def drop_db_force(conn:Connection, dbname:str):
+def drop_db_force(conn:DbConn, dbname:str):
     mssql_sess_info.kill_all_sessions_by_dbname(conn, dbname)
-    conn_set_autocommit(conn,True)
+    conn.set_autocommit(True)
     sql=f"DROP DATABASE {dbname}"
-    odbc_util.exec_query(conn, sql)
+    db_util.exec_query(conn, sql)
 
 
 def create_database(conn, db_name):
@@ -24,7 +24,7 @@ def create_database_if_not_exists(conn, db_name):
         create_database(conn, db_name)
 
 
-def drop_database(conn:pyodbc.Connection, db_name:str):
+def drop_database(conn:DbConn, db_name:str):
     sql = "drop database %s" % db_name
     exec_query(conn, sql)
 
@@ -78,7 +78,7 @@ def restore_database_from_disk_by_backup_file_info(conn, backup_file_name, backu
                                 full_text_logical_name, str(full_text_path))
 
 
-def restore_database_from_disk(conn:pyodbc.Connection, file_path:str, db_name:str, data_file_logical_name:str,
+def restore_database_from_disk(conn:DbConn, file_path:str, db_name:str, data_file_logical_name:str,
                                 data_file_path:str, log_file_logical_name:str, log_file_path:str,
                                 full_text_logical_name:str, full_text_path:str):
     move_str = "MOVE N'%s' TO N'%s'"
@@ -141,7 +141,7 @@ def is_full_text_file(file_name:str):
 
 
 # noinspection PyPep8Naming
-def read_backup_info(conn:pyodbc.Connection, backup_file_path:str):
+def read_backup_info(conn:DbConn, backup_file_path:str):
     sql = "RESTORE FILELISTONLY FROM DISK ='%s'" % backup_file_path
     FN_LogicalName = "LogicalName"
     FN_PhysicalName = "PhysicalName"
@@ -177,7 +177,7 @@ def get_mssql_data_dir_from_phys_path(phys_path:str):
 
 # noinspection PyPep8Naming
 def copy_mssql_db(offh_ini_path:str, db_src_name:str, db_dst_name:str):
-    with odbc_util.using_odbc_conn(offh_ini_path) as conn:
+    with using_db_conn(offh_ini_path) as conn:
         # src Tabelle exportieren
         dmpFileName = os.path.join(os.environ["temp"], "%s.dmp" % db_dst_name)
         if os.path.exists(dmpFileName):
@@ -211,8 +211,6 @@ def db_exists(conn, db_name):
 from typing import List, Optional
 
 from dkm_lib_pure import dkmFsUtil
-
-from dkm_lib_odbc import odbc_util
 
 _DATA_INFO_SQL_SELECT_PART = """
 select dbs.name as db_name,
@@ -294,12 +292,12 @@ def _database_infos_raw_rows_to_list(rows:List[dict])-> List[TDatabaseInfo]:
 
 
 def get_all_database_infos(conn) -> List[TDatabaseInfo]:
-    rows = odbc_util.get_dict_rows(conn, _build_get_all_database_info_sql())
+    rows = db_util.get_dict_rows(conn, _build_get_all_database_info_sql())
     return _database_infos_raw_rows_to_list(rows)
 
 
 def get_specific_database_infos(conn, db_name:str) -> Optional[TDatabaseInfo]:
-    rows = odbc_util.get_dict_rows(conn, _build_get_specific_database_info_sql(), db_name)
+    rows = db_util.get_dict_rows(conn, _build_get_specific_database_info_sql(), db_name)
     lst= _database_infos_raw_rows_to_list(rows)
     if lst.__len__()==0:
         return None

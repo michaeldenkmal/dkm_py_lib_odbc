@@ -3,10 +3,9 @@ import os.path
 from dataclasses import dataclass
 from typing import List, Optional
 
-from pyodbc import Connection
-
+from dkm_lib_db import db_util
+from dkm_lib_db.db_driver import DbConn
 from dkm_lib_mssql_odbc import norm_util, mssql_sess_info
-from dkm_lib_odbc import conn_util, odbc_util
 
 
 @dataclass
@@ -17,7 +16,7 @@ class DbPhysFileInfo:
     type_desc:str=""
 
 
-def get_db_phys_file_info(conn:Connection, db_name:str)->List[DbPhysFileInfo]:
+def get_db_phys_file_info(conn:DbConn, db_name:str)->List[DbPhysFileInfo]:
     sql=f"""
         -- To fetch the logical name of a data file
         SELECT name, physical_name, state_desc,type_desc
@@ -27,7 +26,7 @@ def get_db_phys_file_info(conn:Connection, db_name:str)->List[DbPhysFileInfo]:
     return norm_util.fill_recs_data(conn,sql,lambda :DbPhysFileInfo())
 
 
-def get_db_phys_mdf_fileinfo(conn:Connection, db_name:str)->Optional[DbPhysFileInfo]:
+def get_db_phys_mdf_fileinfo(conn:DbConn, db_name:str)->Optional[DbPhysFileInfo]:
     db_files = get_db_phys_file_info(conn, db_name)
     for db_file in db_files:
         if db_file.name.endswith("_DATA"):
@@ -41,7 +40,7 @@ class GetGbPhysStorePathRes:
     data_file_info:DbPhysFileInfo
 
 
-def get_db_phys_store_path(conn:Connection, db_name:str)->Optional[GetGbPhysStorePathRes]:
+def get_db_phys_store_path(conn:DbConn, db_name:str)->Optional[GetGbPhysStorePathRes]:
     db_file_info = get_db_phys_mdf_fileinfo(conn, db_name)
     if db_file_info:
         return GetGbPhysStorePathRes(
@@ -51,13 +50,13 @@ def get_db_phys_store_path(conn:Connection, db_name:str)->Optional[GetGbPhysStor
     return None
 
 
-def create_snapshot(conn:Connection, db_name:str, snapshot_name:str):
+def create_snapshot(conn:DbConn, db_name:str, snapshot_name:str):
     create_db_snapshot(conn,db_name=db_name,snapshot_name=snapshot_name,
                        db_data_files=get_db_phys_file_info(conn,db_name))
 
 
 
-def create_db_snapshot(conn:Connection, db_name:str, snapshot_name:str, db_data_files:List[DbPhysFileInfo]):
+def create_db_snapshot(conn:DbConn, db_name:str, snapshot_name:str, db_data_files:List[DbPhysFileInfo]):
     def build_name_file_name(_db_file_info:DbPhysFileInfo)->str:
         # (NAME = AdventureWorks_Data, FILENAME = 'C:\AdventureWorks_data_042007.ss'),
         # (NAME = fg0103SALES , FILENAME = < Specify filename > )
@@ -81,14 +80,13 @@ def create_db_snapshot(conn:Connection, db_name:str, snapshot_name:str, db_data_
     """
     print(sql)
     # siehe https://stackoverflow.com/questions/9918129/how-can-i-create-a-database-using-pymssql
-    #conn.autocommit(True)#
-    conn_util.conn_set_autocommit(conn, True)
-    odbc_util.exec_query(conn, sql)
-    conn_util.conn_set_autocommit(conn, False)
+    conn.set_autocommit(True)
+    db_util.exec_query(conn, sql)
+    conn.set_autocommit(False)
 
 
 
-def revert_to_snapshot(conn:Connection,db_name:str, snap_shot_name:str):
+def revert_to_snapshot(conn:DbConn,db_name:str, snap_shot_name:str):
     """Revert the entire database using restore operation
 A database revert operation requires the RESTORE DATABASE permissions on the source database. To revert the database, use the following Transact-SQL statement:
 
@@ -105,9 +103,9 @@ GO"""
     RESTORE DATABASE {db_name} from   
         DATABASE_SNAPSHOT = 'ss_{snap_shot_name}';  
     """
-    conn_util.conn_set_autocommit(conn,True)
-    odbc_util.exec_query(conn,"use master")
-    odbc_util.exec_query(conn,sql)
-    conn_util.conn_set_autocommit(conn,False)
+    conn.set_autocommit(True)
+    db_util.exec_query(conn,"use master")
+    db_util.exec_query(conn,sql)
+    conn.set_autocommit(False)
 
 

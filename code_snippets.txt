@@ -1,0 +1,10 @@
+mssqlUtil.using_dkm_test_conn()
+odbc_util.using_odbc_conn_test()
+
+
+odbc_util.exec_query
+
+
+with odbc_util.using_odbc_conn_test() as conn:
+
+mv ./dkm-py-lib-mssql-odbc/ ./dkm-py-lib-odbc

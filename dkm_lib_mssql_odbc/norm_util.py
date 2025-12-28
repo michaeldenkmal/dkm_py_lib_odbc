@@ -1,10 +1,11 @@
 import logging
-from dataclasses import dataclass
-from typing import Dict, List, Any, Callable, Optional
+from dataclasses import dataclass, fields
+from typing import Dict, List, Any, Callable, Optional, TypeVar, Type
 
-from dkm_lib_mssql_odbc import  mssql_crud_util, mssql_types
-from dkm_lib_odbc import odbc_util
+from dkm_lib_db.db_util import get_dict_rows, get_long_val_from_row
+from dkm_lib_mssql_odbc import mssql_crud_util, mssql_types
 
+T = TypeVar("T")
 
 @dataclass
 class TFillRecDataOpts:
@@ -12,7 +13,56 @@ class TFillRecDataOpts:
     prop_getter_map: Optional[Dict[str, Callable[[Dict, Any], Any]]] =None
 
 
-def _fill_rec_data(raw_row,r, opts:TFillRecDataOpts, field_mapping:Dict[str,str]):
+# def fetch_rows_lazy(
+#         conn:DbConn,
+#         sql: str,
+#         params: Sequence[Any] | None,
+#         dataclazz: Type[T],
+#     *,
+#         batch_size: int = 5000,
+#         fn_mapping:Optional[Callable[[str,any],any]] = None,
+# ) -> Iterator[T]:
+#     """
+#     Führt eine SQL-Query aus und gibt Dataclass-Instanzen zurück.
+#     Holt Daten in Batches, damit auch sehr große Tabellen streamend
+#     verarbeitet werden können.
+#     :param fn_mapping: bekommt colName and rawColValue und erwartet denn wert als rückgabe
+#     wenn nichts zu ändern war, dann den übergebenen Wert wieder zurückgeben
+#     """
+#     # Feldnamen aus der Dataclass (nur die nehmen wir auf)
+#     #  baut ein Set Comprehension.
+#     # noinspection Mypy
+#     dc_fields: set[str] = {f.name for f in fields( dataclazz)} # type: ignore[arg-type]
+#
+#     with conn.cursor() as cur:
+#         try:
+#             cur.execute(sql, params or [])
+#         except ProgrammingError as e:
+#             errmsg = f"{e} bei sql={sql} params={params}"
+#             raise ProgrammingError(errmsg) from e
+#
+#         colnames = [c[0] for c in cur.description]
+#
+#         while True:
+#             rows = cur.fetchmany(batch_size)
+#             if not rows:
+#                 break
+#
+#             for row in rows:
+#                 # 1. Dict aus Spaltenname -> Wert aufbauen
+#                 row_dict = {}
+#                 for col, val in zip(colnames, row):
+#                     if col in dc_fields:
+#                         if fn_mapping:
+#                             val = fn_mapping(col,val)
+#                         row_dict[col] = val
+#                     # else: Feld ignorieren (nicht in Dataclass definiert)
+#
+#                 # 2. Dataclass-Instanz bauen
+#                 yield dataclazz(**row_dict)
+#
+
+def _fill_rec_data(raw_row, dataclazz: Type[T] ,opts:TFillRecDataOpts, field_mapping:Dict[str,str]):
 
     def is_ignored_field(field:str)->bool:
         if not opts.ignored_fields:
@@ -27,7 +77,9 @@ def _fill_rec_data(raw_row,r, opts:TFillRecDataOpts, field_mapping:Dict[str,str]
             return None
         return fn_new_value(raw_row,cur_value)
 
-    for key in r.__dict__.keys():
+    dc_fields: set[str] = {f.name for f in fields(dataclazz)}
+    dc_dict = {}
+    for key in dc_fields:
         if not (key.startswith("__") and key.endswith("__")) and (not is_ignored_field(key)):
             try:
                 value = raw_row[key]
@@ -46,17 +98,18 @@ def _fill_rec_data(raw_row,r, opts:TFillRecDataOpts, field_mapping:Dict[str,str]
             new_value=handle_prog_getter(key, value)
             if new_value:
                 value = new_value
-            r.__setattr__(key, value)
-    return r
+            #r.__setattr__(key, value)
+            dc_dict[key] = value
+    return dataclazz(**dc_dict)
 
 
-def fill_recs_data(conn, sql, fn_create_rec, *params):
-    return fill_recs_data_with_opts(conn, sql, fn_create_rec, TFillRecDataOpts(),*params)
+def fill_recs_data(conn, sql, dataclazz: Type[T] , *params):
+    return fill_recs_data_with_opts(conn, sql, dataclazz, TFillRecDataOpts(),*params)
 
 
-def fill_recs_data_with_opts(conn, sql, fn_create_rec, opts:TFillRecDataOpts,*params):
+def fill_recs_data_with_opts(conn, sql, dataclazz: Type[T],opts:TFillRecDataOpts,*params):
     recs =[]
-    rows = odbc_util.get_dict_rows(conn, sql, *params)
+    rows = get_dict_rows(conn, sql, *params)
     fieldmapping =None
     for row in rows:
         # r = TVeranstRechRec()
@@ -67,7 +120,9 @@ def fill_recs_data_with_opts(conn, sql, fn_create_rec, opts:TFillRecDataOpts,*pa
             for key in row.keys():
                 fieldmapping[key.upper()] = key
 
-        recs.append(_fill_rec_data(row, fn_create_rec(),opts,fieldmapping))
+        recs.append(_fill_rec_data(
+            raw_row=row, dataclazz=dataclazz, opts=opts,field_mapping=fieldmapping)
+        )
     return recs
 
 
@@ -91,13 +146,13 @@ def find_entity_by_id (conn, table_name:str, primary_key_info:mssql_types.Primar
 def get_next_max_id(conn, table_name:str, pk_name:str, with_bin:bool=False, i_bin:int=0, bin_fakt=0 )->float|int:
     sql = "select max(coalesce(%s,0)) maxId from %s" % (pk_name, table_name)
     # List rows = TDbUtil.getQueryResult(conf, SQL, null);
-    rows = odbc_util.get_dict_rows(conn, sql)
+    rows = get_dict_rows(conn, sql)
     # if (rows.isEmpty()) {
     if len(rows) == 0:
         return 0
     else:
         row = rows[0]
-        curmax = odbc_util.get_long_val_from_row(row, "maxId")
+        curmax = get_long_val_from_row(row, "maxId")
         if curmax is None:
             curmax = 0
         if with_bin:

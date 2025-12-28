@@ -6,9 +6,9 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import List, Optional
 
+from dkm_lib_db.oh_ini_db_file import TOhIniDBFile, get_test_offh_ini_file_path
 from dkm_lib_mssql_odbc import mssql_snapshot_util
-from dkm_lib_odbc import odbc_util
-from dkm_lib_odbc.oh_ini_db_file import TOhIniDBFile, get_test_offh_ini_file_path
+from dkm_lib_mssql_odbc.mssql_odbc_use import using_db_conn_test
 
 
 class EnAction(str,Enum):
@@ -37,13 +37,13 @@ def analyze_cmd_args(args:List[str])->Optional[CmdParams]:
 
 def exec_action_create(cmd_params):
     dbinfo_file = TOhIniDBFile(get_test_offh_ini_file_path())
-    with odbc_util.using_odbc_conn_test() as conn:
+    with using_db_conn_test() as conn:
         mssql_snapshot_util.create_snapshot(conn, dbinfo_file.database, cmd_params.snapshot_name)
 
 
 def exec_action_revert(cmd_params):
     dbinfo_file = TOhIniDBFile(get_test_offh_ini_file_path())
-    with odbc_util.using_odbc_conn_test() as conn:
+    with using_db_conn_test() as conn:
         mssql_snapshot_util.revert_to_snapshot(conn, dbinfo_file.database, cmd_params.snapshot_name)
 
 

@@ -1,13 +1,15 @@
 from dataclasses import dataclass
 from typing import Optional
 
+from dkm_lib_db.db_conf import TDbConf
+from dkm_lib_db.db_driver import DbConn
 from dkm_lib_mssql_odbc import mssql_crud_util
-from dkm_lib_mssql_odbc.dbshared_conf import IDbConf
 from dkm_lib_mssql_odbc.mssql_merge_sql import BuildMergeStmtParams
+from dkm_lib_mssql_odbc.mssql_schema_util import create_table_if_not_exists
 from dkm_lib_mssql_odbc.oh_calced_bin_pk_base_intf import OhCalcedBinPkBaseIntf, set_ocb_def_fields, \
     build_ocb_merge_stmt_params
 
-"""
+_CREATE_TABLE_SQL="""
 CREATE TABLE [dbo].[test_firmen](
 	[local_id] [bigint] IDENTITY(1,1) NOT NULL,
 	[local_bin] [int] NOT NULL,
@@ -23,8 +25,11 @@ CREATE TABLE [dbo].[test_firmen](
 (
 	[id] ASC
 )) 
-GO
 """
+
+def test_firmen_ensure_table(conn:DbConn):
+    create_table_if_not_exists(conn, "test_firmen",_CREATE_TABLE_SQL)
+
 
 
 @dataclass
@@ -48,6 +53,6 @@ def create_new(suchbegriff: str, bez1: str, bez2: Optional[str] = None) -> TestF
     return row
 
 
-def save(conf: IDbConf, row: TestFirmen) -> TestFirmen:
+def save(conf: TDbConf, row: TestFirmen) -> TestFirmen:
     set_ocb_def_fields(conf, row)
     return mssql_crud_util.merge_data_row_ocb(conf, row, TestFirmen_bmsp)

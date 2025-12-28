@@ -19,7 +19,8 @@ class MssqlMergeSqlTest(unittest.TestCase):
     def test_buildMergeStmtWOAutInc(self):
         print("test_buildMergeStmtWOAutInc")
         # Achtung nicht formatieren
-        expected = """MERGE ohlkz AS target
+        expected = """SET NOCOUNT ON;
+MERGE ohlkz AS target
 
 USING (SELECT %s,%s) as Source (lkz,szLand)
 ON ((target.lkz = source.lkz ))

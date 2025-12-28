@@ -2,12 +2,13 @@ import unittest
 from dataclasses import dataclass
 from typing import Optional
 
-from dkm_lib_mssql_odbc import mssql_crud_util, norm_util, dbshared_conf
+from dkm_lib_db import db_util
+from dkm_lib_mssql_odbc import mssql_crud_util, norm_util, mssql_schema_util, mssql_odbc_use
 from dkm_lib_mssql_odbc.mssql_merge_sql import BuildMergeStmtParams
+from dkm_lib_mssql_odbc.mssql_odbc_use import using_db_conn_test, using_db_conf_test
 from dkm_lib_mssql_odbc.test import test_firmen
-from dkm_lib_odbc import odbc_util
 
-"""
+PERSON_CREATE_SQL="""
 create table Person(
 	id float,
 	nname varchar(50),
@@ -47,6 +48,8 @@ def get_test_kk_var() -> KkVariable:
         )
 
 
+
+
 class MssqlCrudUtilTest(unittest.TestCase):
     def test_build_dbparams(self):
         pers = Person(id=1, nname="NName")
@@ -59,24 +62,33 @@ class MssqlCrudUtilTest(unittest.TestCase):
         sql_and_params = mssql_crud_util.build_sql_and_params_data_row(kk_var_rec,KK_VARIABLE_MERGE_INFO)
         print(sql_and_params)
 
+    def ensure_person_table(self):
+        with mssql_odbc_use.using_db_conn_test() as conn:
+            if not mssql_schema_util.table_exists(conn, "Person"):
+                db_util.exec_query(conn, PERSON_CREATE_SQL)
+                conn.commit()
+
     def test_merge_data_row(self):
+        self.ensure_person_table()
         pers = Person(id=2, nname="NName2")
 
         def get_saved_row()->Optional[Person]:
-            with odbc_util.using_odbc_conn_test() as conn_s1:
+            with using_db_conn_test() as conn_s1:
                 #sql = f"select  {norm_util.get_select_fields_list(Person)} from pers where id = %s"
                 return norm_util.find_entity_by_id(conn_s1, table_name="person", primary_key_info= {"id": 2},
                                                    fn_create_rec= lambda: pers
                                                    )
 
-        with odbc_util.using_odbc_conn_test() as conn:
+        with using_db_conn_test() as conn:
             mssql_crud_util.merge_data_row(conn,pers, PERSON_MERGE_INFO)
+            conn.commit()
 
         saved_row = get_saved_row()
         self.assertEqual(pers, saved_row)
 
-        with odbc_util.using_odbc_conn_test() as conn:
+        with using_db_conn_test() as conn:
             mssql_crud_util.del_data_row(conn, pers,"person", {"id": 2.0})
+            conn.commit()
 
         saved_row = get_saved_row()
         self.assertTrue(saved_row is None)
@@ -88,13 +100,14 @@ class MssqlCrudUtilTest(unittest.TestCase):
             bez2 = "bez2"
         )
         print(row)
-        with dbshared_conf.using_dkm_conf_test() as conf:
+        with using_db_conf_test() as conf:
+            test_firmen.test_firmen_ensure_table(conf.conn)
             saved_row =test_firmen.save(conf, row)
             self.assertTrue(saved_row.id is not None)
             self.assertTrue(saved_row.local_id is not None)
             self.assertTrue(saved_row.login_name is not None)
-            self.assertEqual(saved_row.local_bin, conf.bin )
-            self.assertEqual(saved_row.local_binfakt, conf.bin_fakt)
+            self.assertEqual(saved_row.local_bin, conf.i_bin )
+            self.assertEqual(saved_row.local_binfakt, conf.binfakt)
             conf.commit()
 
     def test_primary_key_Info_to_where_sql(self):

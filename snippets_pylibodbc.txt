@@ -1,0 +1,20 @@
+USE [master]
+RESTORE DATABASE [ohemm] FROM  DISK = N'D:\mssql\backup\expdat_emm_2025_12_17.dmp' WITH  FILE = 1,  MOVE N'ohemm_Data' TO N'D:\mssql\emm\OHEMM.mdf',  MOVE N'ftrow_ftOfficeh' TO N'D:\mssql\emm\ftrow_ftOfficeh.ndf',  MOVE N'ohemm_Log' TO N'D:\mssql\emm\OHEMM_1.ldf',  NOUNLOAD,  REPLACE,  STATS = 5
+
+GO
+
+libGaData
+libGaOrtDat
+lib_gadata_s
+
+      <exclusions>
+        <exclusion>
+          <groupId>at.denkmal</groupId>
+          <artifactId>libgaCB</artifactId>
+        </exclusion>
+      </exclusions>
+
+
+33141=>498892
+53141=>498893
+
