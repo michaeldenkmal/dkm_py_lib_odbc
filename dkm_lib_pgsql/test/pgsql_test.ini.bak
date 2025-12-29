@@ -1,0 +1,57 @@
+[willco]
+;globaler Excelpfad
+kundenname=DEV-Purkers Denkmal Office Help
+rootdir=d:\kunden\dkmpdb
+reportdir=d:\kunden\\dexe\rep
+;Serienbrieffunktion mit paradox oder Text
+;Paradox=PDX Text=TXT oder kein Eintrag
+serbrVersion=TXT
+;Es ist egal was jetzt folgt
+KALKExportDir=n:\dkmpdb
+FAKTExportDir=n:\dkmpdb
+;entweder Bau-SU oder Bau-Dat
+;Vorsicht gro� und Kleinschriebung nicht vergessen
+FAKTAusgabeArt=Bau-SU
+
+[ID]
+MTGL_BIN=3100
+; nbanna 3102
+; nbvaio2 3102 nicht mehr verwenden
+; nbvaio3 3103 nicht mehr verwenden
+; nbmwibm  3104
+; nbibm3   3105
+; nbaw2	3106 (platte kaputt ist zZ nbibm von monika
+; nbanna3 3107
+; nbmo 3108  
+; nbvaio2 3109
+; acr08 vista anna 3110
+; nbibm3vm 3111
+; nbibmoni 3112
+; nbmwecafe 3113
+; acertablett 3114
+; ASUSULTRAMW 3115
+; nbibmw5301  3116
+; nbhpmoni 3117
+; nbibmmo14 3118
+; nbannalen420 3119
+; NBIBM530W81 3120
+; NBMONI2020 3121
+MTGL_BIN=3100
+LG_BIN=3100
+BINFAKT=10000
+EUROFAKTOR=13,12
+;Wenn BMLIS dann diesen Eintrag streichen
+LG_ARGE_ZONE=3
+ARGE_ZONE=3100
+LISLG=TRUE
+KURZNAME=DKM
+
+[DATABASEPARAMS]
+DRIVERNAME=PGSQL
+USER NAME=root
+PASSWORD=dkt78
+DATABASE NAME=pylibtst
+SERVER NAME=dev23
+SQLQRYMODE=SERVER
+PERSISTENCE_UNITNAME=libOhDataPU
+

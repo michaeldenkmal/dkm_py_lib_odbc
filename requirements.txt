@@ -2,3 +2,4 @@ dkm-py-lib-pure@git+https://github.com/michaeldenkmal/dkm-py-lib-pure
 pyodbc
 pywin32
 mypy
+psycopg[binary]
