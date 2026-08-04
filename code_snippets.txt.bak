@@ -8,8 +8,3 @@ odbc_util.exec_query
 with odbc_util.using_odbc_conn_test() as conn:
 
 mv ./dkm-py-lib-mssql-odbc/ ./dkm-py-lib-odbc
-
-
-db_use.using_db_conf_test ()
-
-mssql_odbc_use.
